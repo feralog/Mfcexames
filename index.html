@@ -307,7 +307,7 @@
   const leaderboardBody = document.getElementById('leaderboard-body');
 
   // Funções de persistência
-  function saveQuizState() {
+  function saveQuizState2() {
     localStorage.setItem(STORAGE_KEYS.CURRENT_QUESTION, currentQuestionIndex);
     localStorage.setItem(STORAGE_KEYS.SCORE, score);
     localStorage.setItem(STORAGE_KEYS.USER_ANSWERS, JSON.stringify(userAnswers));
@@ -316,7 +316,7 @@
     localStorage.setItem(STORAGE_KEYS.QUIZ_IN_PROGRESS, 'true');
   }
 
-  function loadQuizState() {
+  function loadQuizState2() {
     if (localStorage.getItem(STORAGE_KEYS.QUIZ_IN_PROGRESS) === 'true') {
       currentQuestionIndex = parseInt(localStorage.getItem(STORAGE_KEYS.CURRENT_QUESTION));
       score = parseInt(localStorage.getItem(STORAGE_KEYS.SCORE));
@@ -611,24 +611,7 @@
     }
   }
 
-  function loadLeaderboard() {
-    try {
-      // Carregar dados do leaderboard do localStorage
-      const leaderboardData = JSON.parse(localStorage.getItem('quiz_leaderboard') || '[]');
-      atualizaLeaderboard(leaderboardData);
-    } catch (error) {
-      console.error('Erro ao carregar leaderboard:', error);
-    }
-  }
 
-  function atualizaLeaderboard(data) {
-    leaderboardBody.innerHTML = '';
-    data.forEach((e, i) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${i + 1}</td><td>${e.usuario}</td><td>${e.pontuacao}</td><td>${e.tempo < 60 ? '00:' + ('0' + e.tempo).slice(-2) : Math.floor(e.tempo / 60).toString().padStart(2, '0') + ':' + ('0' + e.tempo % 60).slice(-2)}</td>`;
-      leaderboardBody.appendChild(tr);
-    });
-  }
 
   function restartQuiz() {
     clearQuizState();
