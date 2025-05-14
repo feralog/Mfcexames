@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quiz Educacional</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; padding-top: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .quiz-container { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1); padding: 30px; }
+    .timer { position: fixed; top: 10px; right: 10px; background: #007bff; color: #fff; padding: 10px 15px; border-radius: 25px; font-weight: bold; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    .option { cursor: pointer; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #dee2e6; transition: all .3s; }
+    .option:hover { background: #f1f8ff; border-color: #b8daff; }
+    .correct { background: #d4edda !important; border-color: #c3e6cb !important; color: #155724; }
+    .incorrect { background: #f8d7da !important; border-color: #f5c6cb !important; color: #721c24; }
+    .explanation { background: #e9ecef; padding: 15px; border-radius: 8px; margin-top: 15px; display: none; }
+    .question-list-item { cursor: pointer; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #dee2e6; background: #f8f9fa; }
+    .question-detail { background: #fff; padding: 15px; border-radius: 8px; margin-top: 10px; display: none; }
+    .leaderboard-table { width: 100%; margin-top: 20px; }
+    .section { display: none; }
+    .active { display: block; }
+    h1, h2, h3 { color: #0056b3; }
+    .btn-next { display: none; }
+    .continue-quiz { margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+<div id="timer" class="timer" style="display:none;">00:00</div>
+
+<div class="container quiz-container">
+  <!-- TELA INICIAL -->
+  <section id="start-section" class="section active">
+    <h1 class="text-center mb-4">Título do Seu Quiz</h1>
+    <div class="mb-3">
+      <label for="username" class="form-label">Digite seu nome:</label>
+      <input type="text" class="form-control" id="username" placeholder="Seu nome">
+    </div>
+    <button id="start-button" class="btn btn-primary btn-lg w-100">Iniciar Quiz</button>
+    <button id="continue-button" class="btn btn-success btn-lg w-100 continue-quiz" style="display:none;">Continuar Quiz</button>
+    <button id="clear-progress-button" class="btn btn-outline-danger btn-lg w-100 mt-3" style="display:none;">Limpar Progresso Salvo</button>
+  </section>
+
+  <!-- TELA QUIZ -->
+  <section id="quiz-section" class="section">
+    <h2 id="question-number" class="mb-3"></h2>
+    <h3 id="question-text" class="mb-4"></h3>
+    <div id="options-container"></div>
+    <div id="explanation" class="explanation"></div>
+    <button id="next-button" class="btn btn-primary mt-3 btn-next">Próxima Questão</button>
+  </section>
+
+  <!-- RESULTADOS -->
+  <section id="results-section" class="section">
+    <h2 class="text-center mb-4">Resultado Final</h2>
+    <div class="alert alert-primary">
+      <strong id="final-score"></strong>
+      <div id="final-time" class="mt-2"></div>
+    </div>
+    <h3 class="mb-3">Suas respostas:</h3>
+    <div id="questions-list"></div>
+    <h3 class="mt-4 mb-3">Classificação</h3>
+    <div class="table-responsive">
+      <table class="table table-striped leaderboard-table">
+        <thead>
+          <tr><th>#</th><th>Nome</th><th>Pontuação</th><th>Tempo</th></tr>
+        </thead>
+        <tbody id="leaderboard-body"></tbody>
+      </table>
+    </div>
+    <button id="restart-button" class="btn btn-primary btn-lg w-100 mt-4">Voltar ao Início</button>
+  </section>
+</div>
+
+<!-- Bootstrap Bundle -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  
+
+   // === QUESTÕES DO QUIZ - SUBSTITUA ESTE ARRAY PELAS NOVAS QUESTÕES ===
+  const questions = [
+    // Exemplo de objeto de questão
+     {
+  question: "Qual é o esquema medicamentoso para a Profilaxia Pós-Exposição (PEP) ao HIV?",
+  options: ["Tenofovir + Entricitabina", "TDF (Tenofovir) + 3TC (Lamivudina) + DTG (Dolutegravir)", "Penicilina Benzatina", "Interferon peguilado + Ribavirina", "Azitromicina + Ceftriaxona"],
+  correctIndex: 1,
+  explanation: "Conforme o documento sobre HIV, o esquema para PEP é TDF (Tenofovir) + 3TC (Lamivudina) + DTG (Dolutegravir) por 28 dias."
+},
+{
+  question: "Qual o período máximo após a exposição de risco em que a PEP para HIV deve ser iniciada?",
+  options: ["24 horas", "48 horas", "72 horas", "1 semana", "2 semanas"],
+  correctIndex: 2,
+  explanation: "De acordo com o documento sobre HIV, a PEP deve ser iniciada nas primeiras 2 horas após exposição, até no máximo de 72 horas."
+},
+{
+  question: "Quais são os medicamentos utilizados na Profilaxia Pré-Exposição (PrEP) ao HIV?",
+  options: ["TDF (Tenofovir) + 3TC (Lamivudina) + DTG (Dolutegravir)", "Tenofovir + Entricitabina", "Penicilina Benzatina", "Azitromicina", "Doxiciclina"],
+  correctIndex: 1,
+  explanation: "O documento sobre HIV informa que a PrEP utiliza Tenofovir + Entricitabina como medicamentos para uso diário e contínuo antes de a pessoa ter contato com o HIV."
+},
+{
+  question: "Qual é o principal medicamento utilizado no tratamento da sífilis?",
+  options: ["Tenofovir", "Azitromicina", "Penicilina Benzatina", "Ceftriaxona", "Doxiciclina"],
+  correctIndex: 2,
+  explanation: "Conforme o documento sobre Sífilis, a Penicilina Benzatina é o medicamento de escolha para o tratamento da sífilis adquirida e em gestantes."
+},
+{
+  question: "Quais são os medicamentos utilizados no tratamento da hepatite B crônica?",
+  options: ["Tenofovir, Interferon peguilado, Entecavir", "Interferon + Ribavirina", "Penicilina Benzatina", "Azitromicina + Ceftriaxona", "Lamivudina + Dolutegravir"],
+  correctIndex: 0,
+  explanation: "De acordo com o documento sobre Hepatites, o tratamento da hepatite B crônica inclui medicações como Tenofovir, Interferon peguilado e Entecavir."
+},
+{
+  question: "Qual o esquema terapêutico para Hepatite C em crianças?",
+  options: ["Tenofovir + Entricitabina", "Interferon + Ribavirina", "Penicilina Benzatina", "Azitromicina", "Antivirais de ação direta em monoterapia"],
+  correctIndex: 1,
+  explanation: "O documento sobre Hepatites menciona que para crianças, o tratamento da Hepatite C utiliza Interferon + Ribavirina por 24 semanas."
+},
+{
+  question: "Qual é o primeiro marcador viral a ser detectado na infecção pelo HIV?",
+  options: ["Proteína p24", "Anticorpos anti-HIV", "RNA viral", "IgM", "DNA proviral"],
+  correctIndex: 2,
+  explanation: "Segundo o documento sobre HIV, o RNA viral é o primeiro marcador a ser detectado no sangue, seguido pela proteína p24 e, posteriormente, pelos anticorpos contra o vírus."
+},
+{
+  question: "Quais são os testes não treponêmicos utilizados para o diagnóstico da sífilis?",
+  options: ["FTA-abs", "VDRL", "PCR", "Western Blot", "ELISA"],
+  correctIndex: 1,
+  explanation: "De acordo com o documento sobre Sífilis, o VDRL (Veneral Disease Research Laboratory) é o teste não treponêmico utilizado para diagnóstico."
+},
+{
+  question: "Quais são os testes treponêmicos utilizados para o diagnóstico da sífilis?",
+  options: ["VDRL", "RPR", "FTA-abs", "PCR", "ELISA para Treponema"],
+  correctIndex: 2,
+  explanation: "Conforme o documento sobre Sífilis, o FTA-abs (Fluorescent Treponemal Antibody-absorption) é o teste treponêmico utilizado para diagnóstico."
+},
+{
+  question: "Quais métodos de biologia molecular são utilizados para diagnóstico da COVID-19?",
+  options: ["FTA-abs e VDRL", "ELISA e Western Blot", "RT-qPCR e RT-LAMP", "Anti-HBs e HBeAg", "IgM e IgG apenas"],
+  correctIndex: 2,
+  explanation: "O documento sobre COVID-19 indica que os testes de biologia molecular utilizados são RT-qPCR e RT-LAMP."
+},
+{
+  question: "Qual o marcador que indica infecção aguda por hepatite A?",
+  options: ["Anti-HAV total", "Anti-HAV IgG", "Anti-HAV IgM", "HAV-RNA", "HAV-Ag"],
+  correctIndex: 2,
+  explanation: "De acordo com o documento sobre Hepatites, o Anti-HAV IgM indica hepatite A aguda, sendo detectável do 2º dia até 3 meses após a infecção."
+},
+{
+  question: "Qual marcador indica imunidade à hepatite B (por infecção pregressa ou vacinação)?",
+  options: ["HBsAg", "Anti-HBs", "HBeAg", "Anti-HBc IgM", "Anti-HBe"],
+  correctIndex: 1,
+  explanation: "Conforme o documento sobre Hepatites, o Anti-HBs é o marcador que indica imunidade, seja por infecção pregressa ou por vacinação."
+},
+{
+  question: "Qual é o esquema de vacinação para hepatite B em recém-nascidos?",
+  options: ["Dose única ao nascer", "Ao nascer, 2, 4 e 6 meses (esquema 1+3)", "2 doses com intervalo de 6 meses", "3 doses aos 2, 4 e 6 meses", "Dose única aos 2 meses"],
+  correctIndex: 1,
+  explanation: "De acordo com o documento sobre Hepatites, o esquema de vacinação para hepatite B é de 1+3 doses: ao nascer, 2, 4 e 6 meses."
+},
+{
+  question: "Qual é o esquema de vacinação para hepatite A?",
+  options: ["Dose única aos 12 meses", "2 doses com intervalo de 6 meses aos 12 e 18 meses", "3 doses aos 2, 4 e 6 meses", "4 doses ao nascer, 2, 4 e 6 meses", "Dose anual"],
+  correctIndex: 1,
+  explanation: "O documento sobre Hepatites informa que a vacinação para hepatite A consiste em 2 doses com intervalo de 6 meses, aplicadas aos 12 e 18 meses."
+},
+{
+  question: "Quais vacinas contra COVID-19 utilizam a tecnologia de mRNA?",
+  options: ["Sinovac e Janssen", "Pfizer/BioNTech e Moderna", "AstraZeneca e Janssen", "Sinovac e AstraZeneca", "Janssen e Moderna"],
+  correctIndex: 1,
+  explanation: "Conforme o documento sobre COVID-19, as vacinas da Pfizer/BioNTech (Comirnaty) e Moderna utilizam a tecnologia de mRNA."
+},
+{
+  question: "Qual a profilaxia indicada para recém-nascidos de mães portadoras de hepatite B?",
+  options: ["Apenas vacina contra hepatite B", "Apenas imunoglobulina", "Vacina contra hepatite B + imunoglobulina", "Penicilina Benzatina", "Tenofovir oral"],
+  correctIndex: 2,
+  explanation: "De acordo com o documento sobre Hepatites, a profilaxia para recém-nascidos de mães HBsAg+ consiste em vacina + imunoglobulina."
+},
+{
+  question: "Como é definida a cura da hepatite C após o tratamento?",
+  options: ["Anti-HCV negativo", "HCV-RNA detectável em baixos níveis", "Resposta Virológica Sustentada (HCV-RNA indetectável)", "Normalização das enzimas hepáticas apenas", "Desaparecimento dos sintomas"],
+  correctIndex: 2,
+  explanation: "O documento sobre Hepatites define a cura da hepatite C como RVS (Resposta Virológica Sustentada), com HCV-RNA negativo após 12 semanas do término do tratamento com antivirais diretos."
+},
+{
+  question: "Qual exame é utilizado para confirmação do diagnóstico de hepatite C?",
+  options: ["Anti-HCV apenas", "Transaminases elevadas", "HCV-RNA", "Anti-HBc", "Bilirrubinas elevadas"],
+  correctIndex: 2,
+  explanation: "Segundo o documento sobre Hepatites, o HCV-RNA (material genético viral) é utilizado para confirmação do diagnóstico de hepatite C."
+},
+{
+  question: "Qual o intervalo entre as doses da vacina para COVID-19 da Pfizer/BioNTech?",
+  options: ["14 dias", "21 dias", "28 dias", "45 dias", "90 dias"],
+  correctIndex: 1,
+  explanation: "De acordo com o documento sobre COVID-19, o esquema da vacina Pfizer/BioNTech (Comirnaty) prevê intervalo de 21 dias entre as doses."
+},
+{
+  question: "Qual o tipo de vacina contra COVID-19 produzida pela Sinovac?",
+  options: ["mRNA", "Vetor viral", "Proteína recombinante", "Vírus inativado", "DNA sintético"],
+  correctIndex: 3,
+  explanation: "Conforme o documento sobre COVID-19, a vacina da Sinovac utiliza a tecnologia de vírus inativado."
+},
+{
+  question: "Um paciente procura atendimento após relação sexual desprotegida com parceiro sabidamente HIV positivo há 48 horas. Qual seria a melhor conduta para este caso?",
+  options: ["Iniciar PrEP (Profilaxia Pré-Exposição)", "Iniciar PEP (Profilaxia Pós-Exposição) imediatamente", "Solicitar exames para confirmar infecção e depois iniciar tratamento", "Prescrever penicilina benzatina", "Aguardar duas semanas para realizar teste rápido"],
+  correctIndex: 1,
+  explanation: "Como indica o documento sobre HIV, a PEP deve ser iniciada preferencialmente nas primeiras 2 horas, mas pode ser administrada em até 72 horas após a exposição. O paciente está dentro da janela de 48 horas, portanto deve iniciar a PEP imediatamente."
+},
+{
+  question: "Uma gestante é diagnosticada com sífilis no terceiro trimestre de gestação, com VDRL 1:64. Seu parceiro refere alergia à penicilina. Após o nascimento, o recém-nascido apresenta VDRL não reagente. Qual a conduta adequada para este recém-nascido?",
+  options: ["Nenhuma conduta é necessária, pois o VDRL é não reagente", "Administrar dose única de penicilina benzatina", "Investigar e tratar como sífilis congênita", "Solicitar FTA-abs e aguardar resultado para definir conduta", "Administrar ceftriaxona por 10 dias"],
+  correctIndex: 2,
+  explanation: "De acordo com o documento sobre Sífilis, todo recém-nascido de mulher com sífilis não tratada ou tratada de forma inadequada (parceiro não tratado) deve ser considerado como caso de sífilis congênita, mesmo com VDRL não reagente, pois a negatividade sorológica não exclui a infecção."
+},
+{
+  question: "Um paciente apresenta os seguintes marcadores para hepatite B: HBsAg positivo, Anti-HBc IgG positivo, Anti-HBe positivo, HBeAg negativo. Como você interpretaria este resultado?",
+  options: ["Hepatite B aguda em fase inicial", "Hepatite B crônica com replicação viral ativa", "Hepatite B crônica inativa", "Imunidade após infecção pregressa", "Imunidade vacinal"],
+  correctIndex: 2,
+  explanation: "Conforme a tabela de perfil sorológico do documento sobre Hepatites, este perfil (HBsAg+, Anti-HBc IgG+, HBeAg-, Anti-HBe+) é compatível com hepatite B crônica inativa, onde há controle parcial da replicação viral."
+},
+{
+  question: "Um profissional de saúde sofreu acidente com material perfurocortante contaminado com sangue de paciente com hepatite B. Este profissional possui esquema vacinal completo contra hepatite B e apresenta Anti-HBs > 10 UI/mL. Qual a conduta adequada neste caso?",
+  options: ["Iniciar imunoglobulina e nova série de vacinação", "Iniciar imunoglobulina apenas", "Iniciar nova série de vacinação apenas", "Nenhuma profilaxia específica é necessária", "Iniciar tratamento com antivirais"],
+  correctIndex: 3,
+  explanation: "De acordo com o documento sobre Hepatites, um valor de Anti-HBs > 10 UI/mL após vacinação indica imunidade protetora contra o HBV. Portanto, nenhuma profilaxia específica é necessária."
+},
+{
+  question: "Um paciente com diagnóstico de hepatite C apresenta HCV-RNA indetectável 24 semanas após término do tratamento com antivirais de ação direta. No entanto, o Anti-HCV permanece positivo. Como você interpretaria este resultado?",
+  options: ["Falha terapêutica", "Reinfecção recente", "Resposta virológica sustentada (cura)", "Hepatite C crônica de baixa replicação", "Resultado falso-negativo para HCV-RNA"],
+  correctIndex: 2,
+  explanation: "O documento sobre Hepatites define a cura da hepatite C como RVS (Resposta Virológica Sustentada), com HCV-RNA indetectável após o tratamento. O Anti-HCV pode permanecer positivo mesmo após a cura, pois indica apenas exposição prévia ao vírus."
+},
+{
+  question: "Uma paciente gestante no primeiro trimestre apresenta teste rápido positivo para HIV no pré-natal. Qual seria o próximo passo na abordagem desta paciente?",
+  options: ["Iniciar imediatamente PEP", "Realizar carga viral e contagem de CD4, e iniciar terapia antirretroviral", "Aguardar o segundo trimestre para iniciar tratamento", "Tratar apenas no momento do parto", "Solicitar apenas exames de rotina do pré-natal"],
+  correctIndex: 1,
+  explanation: "De acordo com os princípios de vigilância do HIV descritos no documento, após diagnóstico de HIV em gestante, deve-se confirmar o diagnóstico com exames complementares (carga viral) e iniciar o tratamento antirretroviral o mais precocemente possível para prevenir a transmissão vertical."
+},
+{
+  question: "Um paciente apresenta os seguintes resultados: Anti-HCV positivo e HCV-RNA negativo. Como você interpretaria este resultado?",
+  options: ["Hepatite C aguda em fase inicial", "Hepatite C crônica com baixa carga viral", "Cura após infecção pregressa ou resultado falso-positivo para Anti-HCV", "Período de janela imunológica", "Coinfecção com HIV"],
+  correctIndex: 2,
+  explanation: "Conforme o documento sobre Hepatites, um resultado Anti-HCV positivo com HCV-RNA negativo pode indicar cura após infecção pregressa ou um resultado falso-positivo para o Anti-HCV, já que este anticorpo permanece positivo mesmo após a eliminação do vírus."
+},
+{
+  question: "Um paciente com 40 anos, sem histórico de vacinação para hepatite B, apresenta os seguintes marcadores: HBsAg negativo, Anti-HBc total positivo, Anti-HBs positivo. Como você interpretaria este resultado?",
+  options: ["Suscetível à infecção por HBV", "Imunidade após infecção natural pregressa", "Imunidade vacinal", "Hepatite B crônica inativa", "Infecção aguda pelo HBV"],
+  correctIndex: 1,
+  explanation: "De acordo com o documento sobre Hepatites, o perfil sorológico com HBsAg negativo, Anti-HBc total positivo e Anti-HBs positivo indica imunidade após infecção natural pregressa, especialmente considerando que o paciente não tem histórico de vacinação."
+},
+{
+  question: "Durante um surto de COVID-19 em uma instituição de longa permanência para idosos, qual seria a estratégia mais adequada para proteção dos residentes?",
+  options: ["Iniciar profilaxia medicamentosa em todos os residentes", "Realizar testes rápidos e isolar apenas os sintomáticos", "Realizar RT-PCR em todos, isolar casos positivos e implementar medidas de controle", "Vacinar apenas os residentes com comorbidades", "Aguardar que todos desenvolvam sintomas para iniciar medidas"],
+  correctIndex: 2,
+  explanation: "Baseado no documento sobre COVID-19, a estratégia mais adequada seria realizar testes diagnósticos confirmatórios como RT-PCR em todos os residentes, isolar os casos positivos (incluindo assintomáticos) e implementar rigorosas medidas de controle de infecção, considerando que idosos constituem grupo de risco aumentado para complicações."
+},
+{
+  question: "Um paciente com diagnóstico recente de sífilis primária é tratado com dose única de penicilina benzatina. Após 6 meses, apresenta queda de 4 diluições no título de VDRL. Como você interpretaria esta evolução?",
+  options: ["Falha terapêutica", "Reinfecção", "Resposta adequada ao tratamento", "Evolução para sífilis terciária", "Necessidade de repetir o tratamento"],
+  correctIndex: 2,
+  explanation: "De acordo com o documento sobre Sífilis, a queda nos títulos do VDRL após o tratamento indica resposta adequada ao tratamento. Uma queda de 4 diluições (por exemplo, de 1:64 para 1:4) dentro de 6 meses após tratamento da sífilis primária representa boa resposta terapêutica."
+}
+
+
+  ];
+  
+// === ADMINISTRAÇÃO DO QUIZ COM PERSISTÊNCIA ===
+
+  // VAR globais
+  let currentQuestionIndex = 0, 
+      score = 0, 
+      userAnswers = [], 
+      seconds = 0, 
+      timerInterval, 
+      questionAnswered = false;
+  
+  // Chaves para localStorage
+  const STORAGE_KEYS = {
+    CURRENT_QUESTION: 'quiz_current_question',
+    SCORE: 'quiz_score',
+    USER_ANSWERS: 'quiz_user_answers',
+    SECONDS: 'quiz_seconds',
+    USERNAME: 'quiz_username',
+    QUIZ_IN_PROGRESS: 'quiz_in_progress'
+  };
+
+  // DOM
+  const startSection = document.getElementById('start-section');
+  const quizSection = document.getElementById('quiz-section');
+  const resultsSection = document.getElementById('results-section');
+  const startButton = document.getElementById('start-button');
+  const continueButton = document.getElementById('continue-button');
+  const clearProgressButton = document.getElementById('clear-progress-button');
+  const nextButton = document.getElementById('next-button');
+  const restartButton = document.getElementById('restart-button');
+  const usernameInput = document.getElementById('username');
+  const questionNumber = document.getElementById('question-number');
+  const questionText = document.getElementById('question-text');
+  const optionsContainer = document.getElementById('options-container');
+  const explanationContainer = document.getElementById('explanation');
+  const timerElement = document.getElementById('timer');
+  const finalScore = document.getElementById('final-score');
+  const finalTime = document.getElementById('final-time');
+  const questionsList = document.getElementById('questions-list');
+  const leaderboardBody = document.getElementById('leaderboard-body');
+
+  // Funções de persistência
+  function saveQuizState() {
+    localStorage.setItem(STORAGE_KEYS.CURRENT_QUESTION, currentQuestionIndex);
+    localStorage.setItem(STORAGE_KEYS.SCORE, score);
+    localStorage.setItem(STORAGE_KEYS.USER_ANSWERS, JSON.stringify(userAnswers));
+    localStorage.setItem(STORAGE_KEYS.SECONDS, seconds);
+    localStorage.setItem(STORAGE_KEYS.USERNAME, usernameInput.value);
+    localStorage.setItem(STORAGE_KEYS.QUIZ_IN_PROGRESS, 'true');
+  }
+
+  function loadQuizState() {
+    if (localStorage.getItem(STORAGE_KEYS.QUIZ_IN_PROGRESS) === 'true') {
+      currentQuestionIndex = parseInt(localStorage.getItem(STORAGE_KEYS.CURRENT_QUESTION));
+      score = parseInt(localStorage.getItem(STORAGE_KEYS.SCORE));
+      userAnswers = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER_ANSWERS));
+      seconds = parseInt(localStorage.getItem(STORAGE_KEYS.SECONDS));
+      const savedUsername = localStorage.getItem(STORAGE_KEYS.USERNAME);
+      if (savedUsername) {
+        usernameInput.value = savedUsername;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  function clearQuizState() {
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_QUESTION);
+    localStorage.removeItem(STORAGE_KEYS.SCORE);
+    localStorage.removeItem(STORAGE_KEYS.USER_ANSWERS);
+    localStorage.removeItem(STORAGE_KEYS.SECONDS);
+    localStorage.removeItem(STORAGE_KEYS.USERNAME);
+    localStorage.removeItem(STORAGE_KEYS.QUIZ_IN_PROGRESS);
+  }
+
+  // Verificar se há um quiz em andamento ao carregar a página
+  function checkSavedQuiz() {
+    if (localStorage.getItem(STORAGE_KEYS.QUIZ_IN_PROGRESS) === 'true') {
+      continueButton.style.display = 'block';
+      clearProgressButton.style.display = 'block';
+      
+      // Carregar o nome do usuário se estiver salvo
+      const savedUsername = localStorage.getItem(STORAGE_KEYS.USERNAME);
+      if (savedUsername) {
+        usernameInput.value = savedUsername;
+      }
+    } else {
+      continueButton.style.display = 'none';
+      clearProgressButton.style.display = 'none';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    startButton.addEventListener('click', startQuiz);
+    continueButton.addEventListener('click', continueQuiz);
+    clearProgressButton.addEventListener('click', clearProgress);
+    nextButton.addEventListener('click', nextQuestion);
+    restartButton.addEventListener('click', restartQuiz);
+    
+    // Verificar se existe um quiz em andamento
+    checkSavedQuiz();
+  });
+
+  function startQuiz() {
+    if (!usernameInput.value.trim()) { 
+      alert('Digite seu nome.'); 
+      return; 
+    }
+    
+    // Limpar qualquer quiz salvo anteriormente
+    clearQuizState();
+    
+    // Inicializar novo quiz
+    currentQuestionIndex = 0;
+    score = 0;
+    userAnswers = [];
+    seconds = 0;
+    
+    startSection.classList.remove('active');
+    quizSection.classList.add('active');
+    timerElement.style.display = 'block';
+    timerInterval = setInterval(() => { 
+      seconds++; 
+      updateTimer();
+      // Salvar estado a cada 10 segundos
+      if (seconds % 10 === 0) {
+        saveQuizState();
+      }
+    }, 1000);
+    
+    loadQuestion();
+    saveQuizState();
+  }
+
+  function continueQuiz() {
+    if (loadQuizState()) {
+      startSection.classList.remove('active');
+      quizSection.classList.add('active');
+      timerElement.style.display = 'block';
+      timerInterval = setInterval(() => { 
+        seconds++; 
+        updateTimer();
+        // Salvar estado a cada 10 segundos
+        if (seconds % 10 === 0) {
+          saveQuizState();
+        }
+      }, 1000);
+      
+      loadQuestion();
+      
+      // Se a questão já foi respondida, exibir explicação e botão de próxima
+      if (currentQuestionIndex < userAnswers.length) {
+        const answerData = userAnswers.find(ans => ans.questionIndex === currentQuestionIndex);
+        if (answerData) {
+          questionAnswered = true;
+          const options = optionsContainer.children;
+          const q = questions[currentQuestionIndex];
+          
+          // Marcar opção correta e incorreta se aplicável
+          options[q.correctIndex].classList.add('correct');
+          if (answerData.userAnswerIndex !== q.correctIndex) {
+            options[answerData.userAnswerIndex].classList.add('incorrect');
+          }
+          
+          // Mostrar explicação e botão de próxima questão
+          explanationContainer.textContent = q.explanation;
+          explanationContainer.style.display = 'block';
+          nextButton.textContent = currentQuestionIndex < questions.length - 1 ? 'Próxima Questão' : 'Ver Resultados';
+          nextButton.style.display = 'block';
+        }
+      }
+    }
+  }
+
+  function clearProgress() {
+    if (confirm('Tem certeza que deseja limpar seu progresso salvo?')) {
+      clearQuizState();
+      continueButton.style.display = 'none';
+      clearProgressButton.style.display = 'none';
+    }
+  }
+
+  function updateTimer() {
+    const m = Math.floor(seconds / 60), s = seconds % 60;
+    timerElement.textContent = `${m < 10 ? '0' + m : m}:${s < 10 ? '0' + s : s}`;
+  }
+
+  function loadQuestion() {
+    questionAnswered = false;
+    explanationContainer.style.display = 'none';
+    nextButton.style.display = 'none';
+    
+    const q = questions[currentQuestionIndex];
+    questionNumber.textContent = `Questão ${currentQuestionIndex + 1} de ${questions.length}`;
+    questionText.textContent = q.question;
+    optionsContainer.innerHTML = '';
+    
+    const letters = ['a', 'b', 'c', 'd', 'e'];
+    q.options.forEach((opt, i) => {
+      const div = document.createElement('div');
+      div.className = 'option';
+      div.textContent = `${letters[i]}) ${opt}`;
+      div.onclick = () => selectOption(i);
+      optionsContainer.appendChild(div);
+    });
+  }
+
+  function selectOption(i) {
+    if (questionAnswered) return;
+    
+    questionAnswered = true;
+    const q = questions[currentQuestionIndex];
+    const opts = optionsContainer.children;
+    opts[q.correctIndex].classList.add('correct');
+    
+    const isCorrect = i === q.correctIndex;
+    if (!isCorrect) opts[i].classList.add('incorrect');
+    if (isCorrect) score++;
+    
+    // Verificar se já existia uma resposta para esta questão
+    const existingAnswerIndex = userAnswers.findIndex(ans => ans.questionIndex === currentQuestionIndex);
+    
+    if (existingAnswerIndex !== -1) {
+      // Atualizar resposta existente
+      userAnswers[existingAnswerIndex] = { 
+        questionIndex: currentQuestionIndex, 
+        userAnswerIndex: i, 
+        isCorrect 
+      };
+    } else {
+      // Adicionar nova resposta
+      userAnswers.push({ 
+        questionIndex: currentQuestionIndex, 
+        userAnswerIndex: i, 
+        isCorrect 
+      });
+    }
+    
+    explanationContainer.textContent = q.explanation;
+    explanationContainer.style.display = 'block';
+    nextButton.textContent = currentQuestionIndex < questions.length - 1 ? 'Próxima Questão' : 'Ver Resultados';
+    nextButton.style.display = 'block';
+    
+    // Salvar estado após responder
+    saveQuizState();
+  }
+
+  function nextQuestion() {
+    currentQuestionIndex++;
+    if (currentQuestionIndex < questions.length) {
+      loadQuestion();
+      saveQuizState();
+    } else {
+      finishQuiz();
+    }
+  }
+
+  function finishQuiz() {
+    clearInterval(timerInterval);
+    quizSection.classList.remove('active');
+    resultsSection.classList.add('active');
+    timerElement.style.display = 'none';
+    
+    finalScore.textContent = `Você acertou ${score} de ${questions.length} questões`;
+    finalTime.textContent = `Tempo total: ${timerElement.textContent}`;
+    
+    displayUserAnswers();
+    sendResultToBackend();
+    loadLeaderboard();
+    
+    // Limpar estado salvo ao finalizar o quiz
+    clearQuizState();
+  }
+
+  function displayUserAnswers() {
+    questionsList.innerHTML = '';
+    const letters = ['a', 'b', 'c', 'd', 'e'];
+    
+    userAnswers.forEach((ans, idx) => {
+      const q = questions[ans.questionIndex];
+      const item = document.createElement('div');
+      item.className = 'question-list-item';
+      item.innerHTML = `
+        <div>
+          <strong>Questão ${idx + 1}:</strong>
+          Você marcou <span class="${ans.isCorrect ? 'text-success' : 'text-danger'}">
+          ${letters[ans.userAnswerIndex]}</span>, correta era <span class="text-success">
+          ${letters[q.correctIndex]}</span>
+        </div>
+      `;
+      
+      const detail = document.createElement('div');
+      detail.className = 'question-detail';
+      detail.innerHTML = `
+        <p><strong>${q.question}</strong></p>
+        ${q.options.map((opt, i) => `
+          <div class="option ${i === q.correctIndex ? 'correct' : ''} ${i === ans.userAnswerIndex && i !== q.correctIndex ? 'incorrect' : ''}">
+            ${letters[i]}) ${opt}
+          </div>
+        `).join('')}
+        <div class="explanation" style="display:block;">${q.explanation}</div>
+      `;
+      
+      item.onclick = () => detail.style.display = detail.style.display === 'block' ? 'none' : 'block';
+      item.appendChild(detail);
+      questionsList.appendChild(item);
+    });
+  }
+
+  // Funções para leaderboard e backend
+
+  function resultadoInserido(res) {
+    console.log('Inserido:', res);
+    loadLeaderboard();
+  }
+
+  function sendResultToBackend() {
+    // Implementar lógica de envio para backend se necessário
+    // Exemplo: enviar via API ou registrar localmente
+    try {
+      // Se existir um método específico para enviar resultados ao backend, use-o aqui
+      // Caso contrário, pode-se implementar uma solução local usando localStorage
+      
+      const leaderboardData = JSON.parse(localStorage.getItem('quiz_leaderboard') || '[]');
+      const newResult = {
+        usuario: usernameInput.value,
+        pontuacao: score,
+        tempo: seconds
+      };
+      
+      leaderboardData.push(newResult);
+      // Ordenar por pontuação (decrescente) e depois por tempo (crescente)
+      leaderboardData.sort((a, b) => {
+        if (b.pontuacao !== a.pontuacao) return b.pontuacao - a.pontuacao;
+        return a.tempo - b.tempo;
+      });
+      
+      localStorage.setItem('quiz_leaderboard', JSON.stringify(leaderboardData));
+      
+      // Chamar função que atualiza a tabela
+      atualizaLeaderboard(leaderboardData);
+    } catch (error) {
+      console.error('Erro ao salvar resultado:', error);
+    }
+  }
+
+  function loadLeaderboard() {
+    try {
+      // Carregar dados do leaderboard do localStorage
+      const leaderboardData = JSON.parse(localStorage.getItem('quiz_leaderboard') || '[]');
+      atualizaLeaderboard(leaderboardData);
+    } catch (error) {
+      console.error('Erro ao carregar leaderboard:', error);
+    }
+  }
+
+  function atualizaLeaderboard(data) {
+    leaderboardBody.innerHTML = '';
+    data.forEach((e, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${i + 1}</td><td>${e.usuario}</td><td>${e.pontuacao}</td><td>${e.tempo < 60 ? '00:' + ('0' + e.tempo).slice(-2) : Math.floor(e.tempo / 60).toString().padStart(2, '0') + ':' + ('0' + e.tempo % 60).slice(-2)}</td>`;
+      leaderboardBody.appendChild(tr);
+    });
+  }
+
+  function restartQuiz() {
+    clearQuizState();
+    resultsSection.classList.remove('active');
+    startSection.classList.add('active');
+    usernameInput.value = '';
+    checkSavedQuiz();
+    usernameInput.focus();
+  }
+
+  // Adicionar evento para salvar o estado quando a página for fechada
+  window.addEventListener('beforeunload', () => {
+    if (quizSection.classList.contains('active')) {
+      saveQuizState();
+    }
+  });
+</script>
+
+</body>
+</html>
